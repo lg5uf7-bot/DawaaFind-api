@@ -4,7 +4,6 @@ export default async function handler(req, res) {
 
   const { nom, dci } = req.query;
 
-  // إذا لا يوجد query — أرجع رسالة ترحيب
   if (!nom && !dci) {
     return res.status(200).json({ 
       message: 'DawaaFind API تعمل ✅',
@@ -24,21 +23,44 @@ export default async function handler(req, res) {
     }
 
     const response = await fetch(url, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept': 'application/json',
-        'Referer': 'https://e-services.anam.ma/'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'fr-MA,fr;q=0.9,ar;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Referer': 'https://e-services.anam.ma/Guide-Medicaments',
+        'Origin': 'https://e-services.anam.ma',
+        'Host': 'e-services.anam.ma',
+        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin'
+      },
+      // مهم: تتبع الـ redirect تلقائياً
+      redirect: 'follow'
     });
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: `ANAM returned ${response.status}` });
+    const text = await response.text();
+    
+    // حاول parse كـ JSON
+    try {
+      const data = JSON.parse(text);
+      return res.status(200).json(data);
+    } catch {
+      // أرجع النص كما هو للتشخيص
+      return res.status(200).json({ 
+        raw: text.substring(0, 500),
+        status: response.status,
+        headers: Object.fromEntries(response.headers)
+      });
     }
 
-    const data = await response.json();
-    res.status(200).json(data);
-
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: error.message,
+      type: error.cause?.code || 'unknown'
+    });
   }
 }
