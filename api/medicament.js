@@ -1,10 +1,11 @@
-const axios = require('axios');
-const https = require('https');
+import axios from 'axios';
+import https from 'https';
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   const { nom, dci } = req.query;
 
@@ -46,4 +47,4 @@ module.exports = async function handler(req, res) {
       data: error.response?.data
     });
   }
-};
+}
