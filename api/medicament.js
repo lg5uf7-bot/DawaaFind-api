@@ -1,7 +1,7 @@
+import axios from 'axios';
 import https from 'https';
 
-// تجاهل SSL غير الموثوق
-const agent = new https.Agent({ rejectUnauthorized: false });
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -27,27 +27,25 @@ export default async function handler(req, res) {
       url = `https://e-services.anam.ma/eServices/api/Medicament/GetMedicamentClause/${encodeURIComponent(dci)}/`;
     }
 
-    const response = await fetch(url, {
-      agent, // ← هذا هو الحل
+    const response = await axios.get(url, {
+      httpsAgent, // ← يتجاهل SSL
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json',
         'Referer': 'https://e-services.anam.ma/Guide-Medicaments',
         'Origin': 'https://e-services.anam.ma'
       },
-      redirect: 'follow'
+      maxRedirects: 5
     });
 
-    const text = await response.text();
-
-    try {
-      const data = JSON.parse(text);
-      return res.status(200).json(data);
-    } catch {
-      return res.status(200).json({ raw: text.substring(0, 500), status: response.status });
-    }
+    return res.status(200).json(response.data);
 
   } catch (error) {
-    res.status(500).json({ error: error.message, type: error.cause?.code || 'unknown' });
+    return res.status(500).json({ 
+      error: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
   }
 }
+```
