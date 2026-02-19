@@ -1,11 +1,10 @@
-import axios from 'axios';
-import https from 'https';
+const axios = require('axios');
+const https = require('https');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   const { nom, dci } = req.query;
 
@@ -28,7 +27,7 @@ export default async function handler(req, res) {
     }
 
     const response = await axios.get(url, {
-      httpsAgent, // ← يتجاهل SSL
+      httpsAgent,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json',
@@ -47,5 +46,4 @@ export default async function handler(req, res) {
       data: error.response?.data
     });
   }
-}
-```
+};
