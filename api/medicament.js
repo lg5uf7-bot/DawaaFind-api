@@ -7,14 +7,15 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-  const { nom, dci } = req.query;
+  const { nom, dci, classe } = req.query;
 
-  if (!nom && !dci) {
+  if (!nom && !dci && !classe) {
     return res.status(200).json({ 
       message: 'DawaaFind API تعمل ✅',
       usage: {
         byName: '/api/medicament?nom=DANTRON',
-        byDCI: '/api/medicament?dci=DAN'
+        byDCI: '/api/medicament?dci=DAN',
+        byClass: '/api/medicament?classe=ANTIHISTAMINIQUE H1'
       }
     });
   }
@@ -23,8 +24,10 @@ export default async function handler(req, res) {
     let url;
     if (nom) {
       url = `https://e-services.anam.ma/eServices/api/Medicament/GetMedicament/${encodeURIComponent(nom)}/`;
-    } else {
+    } else if (dci) {
       url = `https://e-services.anam.ma/eServices/api/Medicament/GetMedicamentClause/${encodeURIComponent(dci)}/`;
+    } else {
+      url = `https://e-services.anam.ma/eServices/api/Medicament/getMedtherdci/${encodeURIComponent(classe)}/TOUS/TOUS/`;
     }
 
     const response = await axios.get(url, {
@@ -37,7 +40,6 @@ export default async function handler(req, res) {
       },
       maxRedirects: 5
     });
-
     return res.status(200).json(response.data);
 
   } catch (error) {
