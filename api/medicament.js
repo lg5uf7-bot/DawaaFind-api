@@ -3,48 +3,47 @@ import https from 'https';
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
+const ALL_DRUG_NAMES = [
+  "ABACAVIR","AMOXICILLINE","AUGMENTIN","AZITHROMYCINE",
+  "CIPROFLOXACINE","DANTRON","DIAZEPAM","DICLOFENAC","DOLIPRANE",
+  "ESOMEPRAZOLE","FUROSEMIDE","GLUCOPHAGE","IBUPROFEN","KETOPROFENE",
+  "LANSOPRAZOLE","LEVOFLOXACINE","LEVOTHYROXINE","LOSARTAN",
+  "METFORMINE","METRONIDAZOLE","MORPHINE","OMEPRAZOLE","ONDANSETRON",
+  "PANTOPRAZOLE","PAROXETINE","PREDNISOLONE","RAMIPRIL","SALBUTAMOL",
+  "SERTRALINE","SIMVASTATINE","TRAMADOL","VALPROATE","VALSARTAN",
+  "VANCOMYCINE","ZOLPIDEM"
+];
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-  const { nom, dci } = req.query;
+  const { page = '1', limit = '12', search } = req.query;
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
 
-  if (!nom && !dci) {
-    return res.status(200).json({ 
-      message: 'DawaaFind API تعمل ✅',
-      usage: {
-        byName: '/api/medicament?nom=DANTRON',
-        byDCI: '/api/medicament?dci=DAN'
-      }
-    });
+  // فلتر الأسماء حسب البحث أو الصفحة
+  let names = ALL_DRUG_NAMES;
+  if (search) {
+    names = ALL_DRUG_NAMES.filter(n => n.startsWith(search.toUpperCase()));
   }
 
-  try {
-    let url;
-    if (nom) {
-      url = `https://e-services.anam.ma/eServices/api/Medicament/GetMedicament/${encodeURIComponent(nom)}/`;
-    } else {
-      url = `https://e-services.anam.ma/eServices/api/Medicament/GetMedicamentClause/${encodeURIComponent(dci)}/`;
-    }
+  const pageNames = names.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
-    const response = await axios.get(url, {
-      httpsAgent,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-        'Referer': 'https://e-services.anam.ma/Guide-Medicaments',
-        'Origin': 'https://e-services.anam.ma'
-      },
-      maxRedirects: 5
-    });
+  // جلب كل الأدوية بشكل متوازي (parallel) بدل واحد واحد
+  const promises = pageNames.map(name =>
+    axios.get(
+      `https://e-services.anam.ma/eServices/api/Medicament/GetMedicament/${encodeURIComponent(name)}/`,
+      { httpsAgent, headers: { 'Referer': 'https://e-services.anam.ma/Guide-Medicaments' }, timeout: 8000 }
+    ).then(r => Array.isArray(r.data) && r.data.length > 0 ? r.data[0] : null)
+     .catch(() => null)
+  );
 
-    return res.status(200).json(response.data);
+  const results = (await Promise.all(promises)).filter(Boolean);
 
-  } catch (error) {
-    return res.status(500).json({ 
-      error: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-  }
+  return res.status(200).json({
+    data: results,
+    total: names.length,
+    page: pageNum,
+    totalPages: Math.ceil(names.length / limitNum)
+  });
 }
